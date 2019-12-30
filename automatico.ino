@@ -20,6 +20,7 @@ TODO
 
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+#include "automatico.h"
 
 /*define hardware constants*/
 
@@ -52,26 +53,25 @@ int state;                //open and close state for button
 unsigned long btnPressElapsed;
 unsigned long btnBeginPressTimer;
 unsigned long buttonBounceElapsed;
-bool btnCurrentState;
 int currentSpeed;
 int setSpeedOpen;
 int setSpeedClose;
 int hasLocation;
 int ledState = LOW;
 bool buttonState;
-
+bool setButton;
 
 
 /*define software constants*/
 unsigned long lastBounceTime = 0;       //last time button pin was toggled
-unsigned long bounceDelay = 10;         //bounce time to filter out noise
+unsigned long bounceDelay = 50;         //bounce time to filter out noise
 unsigned long buttonPressLong_len = 2000;     //no of cycles to register as long button press
 unsigned long buttonPressShort_len = 100;     //no of cycles to register as short button press
 unsigned long previousMillis = 0;
 int DELAY = 20;
 int buttonPressedCounter = 0;
 int lastButtonState = LOW;
-bool currentButton = false;
+bool btnCurrentState = false;
 
 void setup()
 {
@@ -182,31 +182,44 @@ bool classButton(int pin) {
 
     int pinValue = digitalRead(pin);
 
-    Serial.println("class button");
-    Serial.println(pinValue);
-
     if (pinValue != lastButtonState) {
         lastBounceTime = millis();
+    }
 
-        buttonBounceElapsed = (millis() - lastBounceTime);
+        if ((millis() - lastBounceTime) > bounceDelay) {
 
-        if (buttonBounceElapsed > bounceDelay) {
-            btnCurrentState = true;
-            btnBeginPressTimer = millis();
+            if (pinValue != btnCurrentState) {
+
+                btnCurrentState = pinValue;
+
+                if (btnCurrentState == LOW) {
+                    buttonTimer(true);
+                }
+
+                else if (btnCurrentState == HIGH && state == 1) {
+                    buttonTimer(false);
+                }
+            }
+            
         }
+
+       lastButtonState = pinValue;
+       return btnCurrentState;
+}
+
+unsigned long buttonTimer(bool setButton) {
+
+    if (setButton == true) {
+        btnBeginPressTimer = millis();
+        state = !state;
     }
 
-    else if (pinValue != lastButtonState && btnCurrentState == true) {
-        btnCurrentState = false;
-        btnPressElapsed = millis() - btnBeginPressTimer;
+    else if (setButton == false) {
+        btnPressElapsed = (millis() - btnBeginPressTimer);
+       
     }
 
-    lastButtonState = pinValue;
-
-    Serial.println(btnPressElapsed);
-
-    return btnCurrentState;
-
+    return btnPressElapsed;
 }
 
 void automaticWindow() {
