@@ -168,7 +168,7 @@ bool actionButtonOpen() {                               //manual open window
         opnMode = true;
         setSpeedOpen = isSpeedUpdated();
         hapticFeedback(10, 1, 10);
-        Serial.print("hastighed åbne");
+        Serial.print("hastighed Ã¥bne");
         Serial.println(setSpeedClose);
     }
 
@@ -196,12 +196,16 @@ bool classButton(int pin) {
                     buttonTimer(true);
                 }
 
-                else if (btnCurrentState == HIGH && state == 1) {
+               /* else if (btnCurrentState == HIGH && state == 1) {
                     buttonTimer(false);
-                }
+                }*/
             }
             
         }
+Else if (pinValue != lastButtonState && state == 1) {
+buttonTimer(false);
+}
+
 
        lastButtonState = pinValue;
        return btnCurrentState;
