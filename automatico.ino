@@ -44,8 +44,8 @@ int gpsLock = 8;            // has satelite-lock? output to led
 int haptic = 9;             // haptic feedback on actions
 int relayUp = 10;
 int relayDown = 11;
-int inputUp = 12;           // input signal when windows is operated manuallly from generic button
-int inputDown = 12;           // input signal when windows is operated manuallly from generic button
+int autoOn = 12;           // input signal when windows is operated manuallly from generic button
+
 
 /* define variables*/
 bool pos;
@@ -87,6 +87,7 @@ void setup()
     pinMode(relayDown, OUTPUT);
     pinMode(gpsLock, OUTPUT);
     pinMode(haptic, OUTPUT);
+    pinMode(autoOn, OUTPUT);
 }
 
 void loop()
@@ -158,13 +159,14 @@ int classButton(int pin, int outputPin) {
 void automaticoEnable() {                         //enable open close if mode on
     if (classButton(buttonOnOff, 0) >= buttonPressShort_len && classButton(buttonOnOff, 0) < buttonPressLong_len && automaticoEnabledState == false) {
         automaticoEnabledState = true;
-        hapticFeedback(1000, 500, 1000);
-        
+        hapticFeedback(5000, 2000, 5000);
+        digitalWrite(autoOn, HIGH);
     }
 
     else if (classButton(buttonOnOff, 0) >=  buttonPressLong_len && automaticoEnabledState == true) {
         automaticoEnabledState = false;
-        
+        hapticFeedback(2000, 2000, 2000);
+        digitalWrite(autoOn, LOW);
     }
 }
 
@@ -174,27 +176,29 @@ void actionButtons() {
         if (digitalRead(buttonClose) == LOW) {
                 setSpeedClose = isSpeedUpdated();
                 closingTimer = classButton(buttonClose, relayUp);
-                hapticFeedback(1000, 1000, 1000);
+                hapticFeedback(1000, 10, 1000);
         }
 
         if (digitalRead(buttonOpen) == LOW) {
                 setSpeedOpen = isSpeedUpdated();
                 openingTimer = classButton(buttonOpen, relayDown);
-                hapticFeedback(2000, 1000, 2000);
+                hapticFeedback(2000, 10, 2000);
         }
 }
 
 void automaticWindow() {
 
     unsigned long startTimer = millis();
+    int speedPV = isSpeedUpdated();
 
     double bandwith = 0.1;        //bandwidth +-10% of PV
+     
 
     int bandwithValueOpen = (int)setSpeedOpen * (int)bandwith;
     int bandwithValueClose = (int)setSpeedClose * (int)bandwith;
 
-    int lowSpeedLimitValue = isSpeedUpdated() - bandwithValueOpen;
-    int highSpeedLimitValue = isSpeedUpdated() + bandwithValueClose;
+    int lowSpeedLimitValue = speedPV - bandwithValueOpen;
+    int highSpeedLimitValue = speedPV + bandwithValueClose;
 
     if (setSpeedOpen == lowSpeedLimitValue) {
         digitalWrite(relayUp, LOW);
@@ -217,7 +221,7 @@ void automaticWindow() {
 
 
 void alarm() {
-    hapticFeedback(500, 5, 500);
+    
     ledFeedback(100);
 }
 
@@ -225,17 +229,17 @@ void alarm() {
 
 
 void hapticFeedback(int activeLength, int repeats, int silentLength) {          //haptic feedback on button actions milliseconds
+    
+    int hapticCount, hapticSilent = 0;
 
-    int repeatCount, hapticCount, hapticSilent = 0;
-
-    while (repeatCount <= repeats) {
+    for (int repeatCount = 0; repeatCount <= repeats; repeatCount++) {
 
         while (hapticCount < activeLength) {
 
             digitalWrite(haptic, HIGH);
 
             ++hapticCount;
-
+        }
             if (hapticCount == activeLength) {
                 while (hapticSilent < silentLength) {
                     digitalWrite(haptic, LOW);
@@ -243,9 +247,8 @@ void hapticFeedback(int activeLength, int repeats, int silentLength) {          
                     ++hapticSilent;
                 }
             }
-        }
 
-        ++repeatCount;
+    ++repeatCount;
     }
 }
 
