@@ -59,9 +59,17 @@ int currentSpeed;
 int setSpeedOpen;
 int setSpeedClose;
 int hasLocation;
+int hapticState = LOW;
 int ledState = LOW;
+int oneshotHaptic = 0;
+int feedbackCycles;
+int activeLength;
+int repeats;
+int x=0;
+bool setOneshotHaptic;
 bool buttonState;
 bool setButton;
+
 
 
 /*define software constants*/
@@ -69,7 +77,8 @@ unsigned long lastBounceTime = 0;       //last time button pin was toggled
 unsigned long bounceDelay = 50;         //bounce time to filter out noise
 unsigned long buttonPressLong_len = 2000;     //no of cycles to register as long button press
 unsigned long buttonPressShort_len = 100;     //no of cycles to register as short button press
-unsigned long previousMillis = 0;
+unsigned long ledPreviousMillis = 0;
+unsigned long hapticPreviousMillis = 0;
 int buttonPressedCounter = 0;
 int DELAY = 20;
 int lastButtonState = LOW;
@@ -104,6 +113,7 @@ void loop()
     }
 
     buttonPressedCounter = 0;        //reset button press
+
 }
 
 
@@ -128,6 +138,12 @@ void arm() {
         automaticWindow();
     }
 
+
+    if (setOneshotHaptic == 1) {
+
+        hapticFeedback(activeLength);
+    }
+
 }
 
 
@@ -138,17 +154,8 @@ int classButton(int pin, int outputPin) {
             delay(100);
             buttonPressedCounter = buttonPressedCounter + 100;
             digitalWrite(outputPin, HIGH);
-
-            if (buttonPressedCounter == buttonPressShort_len) {
-                hapticFeedback(500, 3, 500);
-            }
-
-            else if (buttonPressedCounter == buttonPressLong_len) {
-                hapticFeedback(2000, 2, 2000);
-            }
-
-            
-         }
+         
+          }
 
         btnPressElapsed = buttonPressedCounter;
         digitalWrite(outputPin, LOW);
@@ -159,14 +166,18 @@ int classButton(int pin, int outputPin) {
 void automaticoEnable() {                         //enable open close if mode on
     if (classButton(buttonOnOff, 0) >= buttonPressShort_len && classButton(buttonOnOff, 0) < buttonPressLong_len && automaticoEnabledState == false) {
         automaticoEnabledState = true;
-        hapticFeedback(5000, 2000, 5000);
+        
         digitalWrite(autoOn, HIGH);
+        setOneshotHaptic = true;
+        
     }
 
     else if (classButton(buttonOnOff, 0) >=  buttonPressLong_len && automaticoEnabledState == true) {
         automaticoEnabledState = false;
-        hapticFeedback(2000, 2000, 2000);
+        
         digitalWrite(autoOn, LOW);
+        setOneshotHaptic = true;
+        
     }
 }
 
@@ -176,13 +187,13 @@ void actionButtons() {
         if (digitalRead(buttonClose) == LOW) {
                 setSpeedClose = isSpeedUpdated();
                 closingTimer = classButton(buttonClose, relayUp);
-                hapticFeedback(1000, 10, 1000);
+                hapticFeedback(1000);
         }
 
         if (digitalRead(buttonOpen) == LOW) {
                 setSpeedOpen = isSpeedUpdated();
                 openingTimer = classButton(buttonOpen, relayDown);
-                hapticFeedback(2000, 10, 2000);
+                hapticFeedback(2000);
         }
 }
 
@@ -222,44 +233,49 @@ void automaticWindow() {
 
 void alarm() {
     
-    ledFeedback(100);
+    feedback(gpsLock, 100);
 }
 
 /*helpers*/
 
 
-void hapticFeedback(int activeLength, int repeats, int silentLength) {          //haptic feedback on button actions milliseconds
-    
-    int hapticCount, hapticSilent = 0;
 
-    for (int repeatCount = 0; repeatCount <= repeats; repeatCount++) {
+void hapticFeedback(int activeLength) {  
+        
+        unsigned long currentMillis = millis();      
 
-        while (hapticCount < activeLength) {
+         if (currentMillis - hapticPreviousMillis >= (unsigned long)activeLength) {
 
-            digitalWrite(haptic, HIGH);
+             hapticPreviousMillis = currentMillis;
 
-            ++hapticCount;
-        }
-            if (hapticCount == activeLength) {
-                while (hapticSilent < silentLength) {
-                    digitalWrite(haptic, LOW);
 
-                    ++hapticSilent;
-                }
-            }
-
-    ++repeatCount;
-    }
+             if (hapticState == LOW) {
+                 hapticState = HIGH;
+                 
+             }
+             else {
+                 hapticState = LOW;
+                 
+             }
+            
+             digitalWrite(haptic, hapticState);
+             
+         }
+x++; //tæl antal skift FLYTTES
+         if (x = repeats) {
+             setOneshotHaptic = false;
+      }
 }
 
-void ledFeedback(unsigned long interval) {
+
+void feedback(int pin, unsigned long interval) {
 
     unsigned long currentMillis = millis();
 
 
-    if (currentMillis - previousMillis >= interval) {
+    if (currentMillis - ledPreviousMillis >= interval) {
 
-        previousMillis = currentMillis;
+        ledPreviousMillis = currentMillis;
 
 
         if (ledState == LOW) {
@@ -269,8 +285,9 @@ void ledFeedback(unsigned long interval) {
             ledState = LOW;
         }
 
-        digitalWrite(gpsLock, ledState);
+        digitalWrite(pin, ledState);
     }
+
 }
 
 void isLocationValid() {
@@ -285,7 +302,7 @@ void isLocationValid() {
     }
 
     else {
-        ledFeedback(200);
+        feedback(gpsLock, 200);
     }
 
 }
@@ -299,5 +316,4 @@ int isSpeedUpdated() {
 
     return currentSpeed;
 }
-
 
