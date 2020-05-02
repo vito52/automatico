@@ -65,7 +65,7 @@ int oneshotHaptic = 0;
 int feedbackCycles;
 int activeLength;
 int repeats;
-int x=0;
+int x = 0;
 bool setOneshotHaptic;
 bool buttonState;
 bool setButton;
@@ -169,7 +169,8 @@ void automaticoEnable() {                         //enable open close if mode on
         
         digitalWrite(autoOn, HIGH);
         setOneshotHaptic = true;
-        
+        repeats = 2;
+        activeLength = 500;
     }
 
     else if (classButton(buttonOnOff, 0) >=  buttonPressLong_len && automaticoEnabledState == true) {
@@ -177,7 +178,9 @@ void automaticoEnable() {                         //enable open close if mode on
         
         digitalWrite(autoOn, LOW);
         setOneshotHaptic = true;
-        
+        repeats = 3;
+        activeLength = 200;
+
     }
 }
 
@@ -242,29 +245,31 @@ void alarm() {
 
 void hapticFeedback(int activeLength) {  
         
-        unsigned long currentMillis = millis();      
-
+        unsigned long currentMillis = millis();
+      
          if (currentMillis - hapticPreviousMillis >= (unsigned long)activeLength) {
 
              hapticPreviousMillis = currentMillis;
 
+             if (x == repeats) {
+                             setOneshotHaptic = false;
+                             hapticState = HIGH;
+                             x = 0;
+             }
 
              if (hapticState == LOW) {
                  hapticState = HIGH;
-                 
+                 x++;
              }
              else {
                  hapticState = LOW;
                  
              }
-            
+                      
              digitalWrite(haptic, hapticState);
-             
+                 
          }
-x++; //tæl antal skift FLYTTES
-         if (x = repeats) {
-             setOneshotHaptic = false;
-      }
+
 }
 
 
