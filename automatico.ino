@@ -48,7 +48,6 @@ int autoOn = 12;           // input signal when windows is operated manuallly fr
 
 
 /* define variables*/
-bool pos;
 bool automaticoEnabledState;                //state for autorun  
 int btnPressElapsed;
 unsigned long btnBeginPressTimer;
@@ -61,8 +60,7 @@ int setSpeedClose;
 int hasLocation;
 int hapticState = LOW;
 int ledState = LOW;
-int oneshotHaptic = 0;
-int feedbackCycles;
+int oneshotHaptic = false;
 int activeLength;
 int repeats;
 int x = 0;
@@ -81,12 +79,9 @@ unsigned long ledPreviousMillis = 0;
 unsigned long hapticPreviousMillis = 0;
 int buttonPressedCounter = 0;
 int DELAY = 20;
-int lastButtonState = LOW;
-bool btnCurrentState = false;
 
 void setup()
 {
-
     Serial.begin(9600);
     ss.begin(GPSBaud);
     pinMode(buttonOpen, INPUT_PULLUP);
@@ -102,18 +97,20 @@ void setup()
 void loop()
 {
 
-    while (ss.available() > 1)
-        if (gps.encode(ss.read()))
-            Serial.println("GPS module found");
-    arm();
+    while (ss.available() > 1) {
 
-    if (millis() > 5000 && gps.charsProcessed() < 10) {
-        Serial.println("no GPS module");
-        while (true);
+        if (gps.encode(ss.read())) {
+        Serial.println("GPS module found");
+        arm();
+        }
+
+        if (millis() > 5000 && gps.charsProcessed() < 10) {
+            Serial.println("no GPS module");
+            while (true);
+        }
+
+        buttonPressedCounter = 0;        //reset button press
     }
-
-    buttonPressedCounter = 0;        //reset button press
-
 }
 
 
@@ -123,8 +120,7 @@ void arm() {
     isLocationValid();
 
     if (hasLocation == HIGH) {
-        isSpeedUpdated();
-        automaticoEnable();
+ 
         Serial.println("GPS Lock - armed");
     }
 
@@ -146,21 +142,65 @@ void arm() {
 
 }
 
-
 int classButton(int pin, int outputPin) {
 
+    bool state;
 
-          while (digitalRead(pin) == LOW) {
-            delay(100);
-            buttonPressedCounter = buttonPressedCounter + 100;
-            digitalWrite(outputPin, HIGH);
-         
-          }
+    while (digitalRead(pin) == LOW) {
+        delay(100);
+        buttonPressedCounter = buttonPressedCounter + 100;
+        digitalWrite(outputPin, HIGH);
 
-        btnPressElapsed = buttonPressedCounter;
-        digitalWrite(outputPin, LOW);
+        if (buttonPressedCounter >= buttonPressShort_len && buttonPressedCounter < buttonPressLong_len && automaticoEnabledState == false) {
+            automaticoEnable(true);
+        }
 
-        return btnPressElapsed;
+        else if (buttonPressedCounter <= buttonPressLong_len && automaticoEnabledState == true) {
+            automaticoEnable(false);
+        }
+
+    }
+
+    btnPressElapsed = buttonPressedCounter;
+
+    return btnPressElapsed;
+}
+
+bool automaticoEnable(bool classButtonState) {
+
+    if (classButtonState == true && automaticoEnabledState == false) {
+        automaticoEnabledState = true;
+
+        digitalWrite(autoOn, HIGH);
+        setOneshotHaptic = true;
+        repeats = 2;
+        activeLength = 500;
+    }
+
+    else if (classButtonState == true && automaticoEnabledState == true) {
+        automaticoEnabledState = false;
+
+        digitalWrite(autoOn, LOW);
+        setOneshotHaptic = true;
+        repeats = 3;
+        activeLength = 200;
+    }
+}
+
+/*int classButton(int pin, int outputPin) {
+
+
+    while (digitalRead(pin) == LOW) {
+        delay(100);
+        buttonPressedCounter = buttonPressedCounter + 100;
+        digitalWrite(outputPin, HIGH);
+
+    }
+
+    btnPressElapsed = buttonPressedCounter;
+    digitalWrite(outputPin, LOW);
+
+    return btnPressElapsed;
 }
 
 void automaticoEnable() {                         //enable open close if mode on
@@ -183,20 +223,19 @@ void automaticoEnable() {                         //enable open close if mode on
 
     }
 }
-
+*/
 
 void actionButtons() { 
 
         if (digitalRead(buttonClose) == LOW) {
                 setSpeedClose = isSpeedUpdated();
                 closingTimer = classButton(buttonClose, relayUp);
-                hapticFeedback(1000);
+               
         }
 
         if (digitalRead(buttonOpen) == LOW) {
-                setSpeedOpen = isSpeedUpdated();
-                openingTimer = classButton(buttonOpen, relayDown);
-                hapticFeedback(2000);
+            setSpeedOpen = isSpeedUpdated();
+            openingTimer = classButton(buttonOpen, relayDown);
         }
 }
 
@@ -205,20 +244,20 @@ void automaticWindow() {
     unsigned long startTimer = millis();
     int speedPV = isSpeedUpdated();
 
-    double bandwith = 0.1;        //bandwidth +-10% of PV
+    int bandwidth = 10;        //bandwidth +-10% of PV
      
 
-    int bandwithValueOpen = (int)setSpeedOpen * (int)bandwith;
-    int bandwithValueClose = (int)setSpeedClose * (int)bandwith;
+    int bandwidthValueOpen = (setSpeedOpen * bandwidth)/100;
+    int bandwidthValueClose = (setSpeedClose * bandwidth)/100;
 
-    int lowSpeedLimitValue = speedPV - bandwithValueOpen;
-    int highSpeedLimitValue = speedPV + bandwithValueClose;
+    int lowSpeedLimitValue = speedPV - bandwidthValueOpen;
+    int highSpeedLimitValue = speedPV + bandwidthValueClose;
 
     if (setSpeedOpen == lowSpeedLimitValue) {
         digitalWrite(relayUp, LOW);
         delay(DELAY);
         while (startTimer - millis() < openingTimer) {
-            digitalWrite(relayDown, HIGH);
+            digitalWrite(relayDown, HIGH); 
         }
 
     }
@@ -314,9 +353,8 @@ void isLocationValid() {
 
 int isSpeedUpdated() {
     if (gps.speed.isUpdated()) {
-        currentSpeed = gps.speed.kmph();
-        Serial.print(currentSpeed);
-        Serial.println(" km/t");
+        //currentSpeed = gps.speed.kmph();
+        currentSpeed = 25;
     }
 
     return currentSpeed;
