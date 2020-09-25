@@ -122,6 +122,7 @@ void arm() {
     if (hasLocation == HIGH) {
  
         Serial.println("GPS Lock - armed");
+        automaticoEnable();
     }
 
     else {
@@ -142,53 +143,8 @@ void arm() {
 
 }
 
+
 int classButton(int pin, int outputPin) {
-
-    bool state;
-
-    while (digitalRead(pin) == LOW) {
-        delay(100);
-        buttonPressedCounter = buttonPressedCounter + 100;
-        digitalWrite(outputPin, HIGH);
-
-        if (buttonPressedCounter >= buttonPressShort_len && buttonPressedCounter < buttonPressLong_len && automaticoEnabledState == false) {
-            automaticoEnable(true);
-        }
-
-        else if (buttonPressedCounter <= buttonPressLong_len && automaticoEnabledState == true) {
-            automaticoEnable(false);
-        }
-
-    }
-
-    btnPressElapsed = buttonPressedCounter;
-
-    return btnPressElapsed;
-}
-
-bool automaticoEnable(bool classButtonState) {
-
-    if (classButtonState == true && automaticoEnabledState == false) {
-        automaticoEnabledState = true;
-
-        digitalWrite(autoOn, HIGH);
-        setOneshotHaptic = true;
-        repeats = 2;
-        activeLength = 500;
-    }
-
-    else if (classButtonState == true && automaticoEnabledState == true) {
-        automaticoEnabledState = false;
-
-        digitalWrite(autoOn, LOW);
-        setOneshotHaptic = true;
-        repeats = 3;
-        activeLength = 200;
-    }
-}
-
-/*int classButton(int pin, int outputPin) {
-
 
     while (digitalRead(pin) == LOW) {
         delay(100);
@@ -203,7 +159,8 @@ bool automaticoEnable(bool classButtonState) {
     return btnPressElapsed;
 }
 
-void automaticoEnable() {                         //enable open close if mode on
+void automaticoEnable() { 
+    
     if (classButton(buttonOnOff, 0) >= buttonPressShort_len && classButton(buttonOnOff, 0) < buttonPressLong_len && automaticoEnabledState == false) {
         automaticoEnabledState = true;
         
@@ -223,7 +180,7 @@ void automaticoEnable() {                         //enable open close if mode on
 
     }
 }
-*/
+
 
 void actionButtons() { 
 
