@@ -1,12 +1,4 @@
 /*
-    Name:       automatico.ino
-    Created:	30/12/2019 14.43.34
-    Author:     HPZBOOK\vito4
-*/
-
-
-
-/*
 use gps to get car-speed and automatically roll up and down window(s) depending on preset vehicle speed.
 use time to set end-stops.
 open window, activate and close window when speed is reached. when speed drops below window opens to previous position
@@ -17,6 +9,7 @@ window action will be at speed measured when AW is activated
 TODO
 -hysteresis to avoid jittering when cruising around set speed OK
 */
+
 
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
