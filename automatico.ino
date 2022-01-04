@@ -13,7 +13,7 @@ TODO
 
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
-#include "automatico.h"
+
 
 /*define hardware constants*/
 
@@ -31,12 +31,12 @@ unsigned long last = 0UL;       // For stats that happen every 5 seconds
 
 /*define pins*/
 int buttonOnOff = 5;          // switch on-off window control
-int buttonOpen = 6;           // open window, will open window and start timer to get window position
-int buttonClose = 7;          // close window, will close window and reset timer defined by open window
-int gpsLock = 8;            // has satelite-lock? output to led
+int buttonClose = 6;           // open window, will open window and start timer to get window position
+int buttonOpen = 7;          // close window, will close window and reset timer defined by open window
+int led = 8;                 // feedback output to led
 int haptic = 9;             // haptic feedback on actions
-int relayUp = 10;
-int relayDown = 11;
+int relayClose = 10;
+int relayOpen = 11;
 int autoOn = 12;           // input signal when windows is operated manuallly from generic button
 
 
@@ -56,11 +56,11 @@ int ledState = LOW;
 int oneshotHaptic = false;
 int activeLength;
 int repeats;
+int windowState;
 int x = 0;
 bool setOneshotHaptic;
 bool buttonState;
 bool setButton;
-
 
 
 /*define software constants*/
@@ -80,21 +80,22 @@ void setup()
     pinMode(buttonOpen, INPUT_PULLUP);
     pinMode(buttonClose, INPUT_PULLUP);
     pinMode(buttonOnOff, INPUT_PULLUP);
-    pinMode(relayUp, OUTPUT);
-    pinMode(relayDown, OUTPUT);
-    pinMode(gpsLock, OUTPUT);
+    pinMode(relayClose, OUTPUT);
+    pinMode(relayOpen, OUTPUT);
+    pinMode(led, OUTPUT);
     pinMode(haptic, OUTPUT);
     pinMode(autoOn, OUTPUT);
 }
 
 void loop()
 {
+    manualRun();
 
     while (ss.available() > 1) {
 
         if (gps.encode(ss.read())) {
         Serial.println("GPS module found");
-        arm();
+        autoRun();
         }
 
         if (millis() > 5000 && gps.charsProcessed() < 10) {
@@ -106,9 +107,13 @@ void loop()
     }
 }
 
+//manual run
+void manualRun() {
+    actionButtons();
+}
 
-
-void arm() {
+//automatic run
+void autoRun() {
 
     isLocationValid();
 
@@ -119,8 +124,9 @@ void arm() {
     }
 
     else {
-        alarm();
+        ledFeedback(led, 100);
         Serial.println("alarm - no location fix");
+        manualRun();
     }
 
     if (automaticoEnabledState == true) {
@@ -179,13 +185,13 @@ void actionButtons() {
 
         if (digitalRead(buttonClose) == LOW) {
                 setSpeedClose = isSpeedUpdated();
-                closingTimer = classButton(buttonClose, relayUp);
+                closingTimer = classButton(buttonClose, relayClose);
                
         }
 
         if (digitalRead(buttonOpen) == LOW) {
             setSpeedOpen = isSpeedUpdated();
-            openingTimer = classButton(buttonOpen, relayDown);
+            openingTimer = classButton(buttonOpen, relayOpen);
         }
 }
 
@@ -203,30 +209,26 @@ void automaticWindow() {
     int lowSpeedLimitValue = speedPV - bandwidthValueOpen;
     int highSpeedLimitValue = speedPV + bandwidthValueClose;
 
-    if (setSpeedOpen == lowSpeedLimitValue) {
-        digitalWrite(relayUp, LOW);
+    if (setSpeedOpen == lowSpeedLimitValue && windowState == 0) {
+        digitalWrite(relayClose, LOW);
         delay(DELAY);
         while (startTimer - millis() < openingTimer) {
-            digitalWrite(relayDown, HIGH); 
+            digitalWrite(relayOpen, HIGH); 
         }
-
+        windowState = 1;
     }
 
-    if (setSpeedClose == highSpeedLimitValue) {
-        digitalWrite(relayDown, LOW);
+    if (setSpeedClose == highSpeedLimitValue && windowState == 1) {
+        digitalWrite(relayOpen, LOW);
         delay(DELAY);
         while (startTimer - millis() < closingTimer) {
-            digitalWrite(relayUp, HIGH);
+            digitalWrite(relayClose, HIGH);
         }
+        windowState = 0;
     }
 
 }
 
-
-void alarm() {
-    
-    feedback(gpsLock, 100);
-}
 
 /*helpers*/
 
@@ -262,7 +264,7 @@ void hapticFeedback(int activeLength) {
 }
 
 
-void feedback(int pin, unsigned long interval) {
+void ledFeedback(int pin, unsigned long interval) {
 
     unsigned long currentMillis = millis();
 
@@ -287,16 +289,13 @@ void feedback(int pin, unsigned long interval) {
 void isLocationValid() {
 
     if (gps.location.isValid()) {
-        Serial.print("Latitude: ");
-        Serial.println(gps.location.lat(), 6);
-        Serial.print("Longitude: ");
-        Serial.println(gps.location.lng(), 6);
+        Serial.print("location ok");
         hasLocation = HIGH;
-        digitalWrite(gpsLock, HIGH);
+        digitalWrite(led, HIGH);
     }
 
     else {
-        feedback(gpsLock, 200);
+        ledFeedback(led, 200);
     }
 
 }
