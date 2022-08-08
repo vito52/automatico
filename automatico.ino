@@ -6,8 +6,13 @@ activated window will open and close between set positions.
 haptic feedback on actions
 window action will be at speed measured when AW is activated
 
-TODO
--hysteresis to avoid jittering when cruising around set speed OK
+FEEDBACKS:
+LED:
+100 = autorun enabled, no location fix
+200 = is location valid, not vaild
+haptic:
+
+
 */
 
 
@@ -94,12 +99,10 @@ void loop()
     while (ss.available() > 1) {
 
         if (gps.encode(ss.read())) {
-        Serial.println("GPS module found");
         autoRun();
         }
 
         if (millis() > 5000 && gps.charsProcessed() < 10) {
-            Serial.println("no GPS module");
             while (true);
         }
 
@@ -119,13 +122,11 @@ void autoRun() {
 
     if (hasLocation == HIGH) {
  
-        Serial.println("GPS Lock - armed");
         automaticoEnable();
     }
 
     else {
         ledFeedback(led, 100);
-        Serial.println("alarm - no location fix");
         manualRun();
     }
 
@@ -212,7 +213,7 @@ void automaticWindow() {
     if (setSpeedOpen == lowSpeedLimitValue && windowState == 0) {
         digitalWrite(relayClose, LOW);
         delay(DELAY);
-        while (startTimer - millis() < openingTimer) {
+        while (millis() - startTimer < openingTimer) {
             digitalWrite(relayOpen, HIGH); 
         }
         windowState = 1;
@@ -221,7 +222,7 @@ void automaticWindow() {
     if (setSpeedClose == highSpeedLimitValue && windowState == 1) {
         digitalWrite(relayOpen, LOW);
         delay(DELAY);
-        while (startTimer - millis() < closingTimer) {
+        while (millis() - startTimer < closingTimer) {
             digitalWrite(relayClose, HIGH);
         }
         windowState = 0;
@@ -289,13 +290,13 @@ void ledFeedback(int pin, unsigned long interval) {
 void isLocationValid() {
 
     if (gps.location.isValid()) {
-        Serial.print("location ok");
         hasLocation = HIGH;
         digitalWrite(led, HIGH);
     }
 
     else {
         ledFeedback(led, 200);
+        hasLocation = LOW;
     }
 
 }
